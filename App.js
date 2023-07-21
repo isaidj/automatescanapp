@@ -1,29 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Text, View, StyleSheet, Button } from "react-native";
+import { Text, View, StyleSheet, Button, TouchableOpacity } from "react-native";
 import { BarCodeScanner } from "expo-barcode-scanner";
-import { Audio } from "expo-av";
+import { playSound } from "./helpers/Sounds";
 import { Vibration } from "react-native";
 import { io } from "socket.io-client";
+import { Camera } from "expo-camera";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const url = "http://192.168.1.79:3002";
 export default function App() {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
   const [socket, setSocket] = useState(null);
-  const [sound, setSound] = React.useState();
-  const [url, setUrl] = useState(null);
-  const [modoEscaneo, setModoEscaneo] = useState("ipDesconocida");
-  //------------------socket--------------------------------------
-  const automateScanCode = (data) => {
-    socket.emit("scan", { data: data });
-  };
 
-  useEffect(() => {
-    if (!socket) {
-      setSocket(io(url));
-    }
-  }, [socket]);
-  //------------------camera-------------------------------------
+  const [ipScaning, setIpScaning] = useState(false);
+
   useEffect(() => {
     const getBarCodeScannerPermissions = async () => {
       const { status } = await BarCodeScanner.requestPermissionsAsync();
@@ -33,41 +23,68 @@ export default function App() {
     getBarCodeScannerPermissions();
   }, []);
 
-  const handleBarCodeScanned = ({ type, data }) => {
-    if (modoEscaneo === "ipDesconocida") {
-      setUrl("http://" + data + ":3002");
-      setModoEscaneo("escaneando");
-    }
-    playSound();
-    const duration = 150;
-    Vibration.vibrate(duration);
-    automateScanCode(data);
+  useEffect(() => {
+    const getStoredIP = async () => {
+      try {
+        const storedIP = await AsyncStorage.getItem("scannedIP");
+        if (storedIP) {
+          setSocket(io(`http://${storedIP}:3002`));
+        }
+      } catch (error) {
+        console.log("Error while retrieving stored IP:", error);
+      }
+    };
 
-    setScanned(true);
-    // alert(`Bar code with type ${type} and data ${data} has been scanned!`);
+    getStoredIP();
+  }, []);
+
+  const automateScanCode = (data) => {
+    socket.emit("scan", { data: data });
   };
 
-  //------------------sound-------------------
-  async function playSound() {
-    console.log("Loading Sound");
-    const { sound } = await Audio.Sound.createAsync(
-      require("./assets/store-scanner.mp3")
-    );
-    setSound(sound);
+  useEffect(() => {
+    if (socket) {
+      socket.on("connect", () => {
+        console.log("conectado");
+        alert("conectado");
+      });
 
-    console.log("Playing Sound");
-    await sound.playAsync();
-  }
-  React.useEffect(() => {
-    return sound
-      ? () => {
-          console.log("Unloading Sound");
-          sound.unloadAsync();
-        }
-      : undefined;
-  }, [sound]);
+      socket.on("disconnect", () => {
+        console.log("desconectado");
+        alert("desconectado");
+      });
+    }
+  }, [socket]);
 
-  //------------------condicional rendering-------------------
+  const handleBarCodeScanned = ({ type, data }) => {
+    setScanned(true);
+    // playSound();
+    const duration = 150;
+    Vibration.vibrate(duration);
+
+    if (ipScaning) {
+      console.log("ip escaneada: " + data);
+      AsyncStorage.setItem("scannedIP", data)
+        .then(() => {
+          setSocket(io(`http://${data}:3002`));
+          setIpScaning(false);
+        })
+        .catch((error) => console.log("Error while storing IP:", error));
+    } else {
+      if (socket) {
+        console.log("codigo escaneado: " + data);
+        automateScanCode(data);
+      } else {
+        console.log("socket no definido");
+      }
+    }
+  };
+
+  const onIpScan = () => {
+    setIpScaning(true);
+    setSocket(null);
+  };
+
   if (hasPermission === null) {
     return <Text>Requesting for camera permission</Text>;
   }
@@ -77,24 +94,37 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <View style={{ alignItems: "center" }}>
-        {modoEscaneo === "ipDesconocida" ? (
-          <Text>Escanea el código QR de la caja</Text>
-        ) : (
-          <Text>Escaneando...</Text>
-        )}
-      </View>
-      <View>
-        <BarCodeScanner
+      {socket === null ? (
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Escanea el QR de la PC</Text>
+          <Text style={styles.subTitle}>
+            Abre la aplicacion en el PC y escanea el QR
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Escanea el codigo de barras</Text>
+          <Text style={styles.subTitle}> {socket.io.uri}</Text>
+        </View>
+      )}
+      <View style={styles.camera}>
+        <Camera
           onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
           style={StyleSheet.absoluteFillObject}
+          type={"back"}
         />
         {scanned && (
-          <Button
-            title={"Tap to Scan Again"}
+          <TouchableOpacity
+            style={styles.scanAgain}
             onPress={() => setScanned(false)}
-          />
+          >
+            <Text>Escanear de nuevo</Text>
+          </TouchableOpacity>
         )}
+      </View>
+      <View style={styles.buttons}>
+        <Button title={"Escanear PC"} onPress={() => onIpScan()} />
+        <Button title={"socket"} onPress={() => console.log(socket)} />
       </View>
     </View>
   );
@@ -103,9 +133,40 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: "column",
+    backgroundColor: "#fff",
+    alignItems: "center",
     justifyContent: "center",
-    color: "#ffd58f",
+  },
+  camera: {
+    width: "100%",
+    height: "80%",
+    backgroundColor: "black",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  titleContainer: {
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  title: {
     fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+  },
+  subTitle: {
+    fontSize: 15,
+    marginBottom: 20,
+  },
+  buttons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  scanAgain: {
+    position: "absolute",
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
   },
 });
