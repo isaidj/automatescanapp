@@ -9,16 +9,17 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "1.17.11",
+    "axios": "^1.4.0",
     "expo": "~48.0.18",
     "expo-av": "~13.2.1",
     "expo-barcode-scanner": "~12.3.2",
+    "expo-camera": "~13.2.1",
     "expo-status-bar": "~1.4.4",
     "react": "18.2.0",
     "react-native": "0.71.8",
     "react-native-udp": "^4.1.7",
-    "socket.io-client": "^4.7.1",
-    "expo-camera": "~13.2.1",
-    "@react-native-async-storage/async-storage": "1.17.11"
+    "socket.io-client": "^4.7.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { Text, View, StyleSheet, Button, TouchableOpacity } from "react-native";
+import {
+  Text,
+  View,
+  StyleSheet,
+  Button,
+  TouchableOpacity,
+  Vibration,
+  SafeAreaView,
+} from "react-native";
 import { BarCodeScanner } from "expo-barcode-scanner";
-import { playSound } from "./helpers/Sounds";
-import { Vibration } from "react-native";
-import { io } from "socket.io-client";
 import { Camera } from "expo-camera";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { Badge } from "./components/Badge";
 
+const port = 5000;
 export default function App() {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
-  const [socket, setSocket] = useState(null);
-
+  const [socketUri, setSocketUri] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState(null);
+  const [connectionData, setConnectionData] = useState(null);
   const [ipScaning, setIpScaning] = useState(false);
 
   useEffect(() => {
@@ -28,7 +37,7 @@ export default function App() {
       try {
         const storedIP = await AsyncStorage.getItem("scannedIP");
         if (storedIP) {
-          setSocket(io(`http://${storedIP}:3002`));
+          setSocketUri(`http://${storedIP}:` + port);
         }
       } catch (error) {
         console.log("Error while retrieving stored IP:", error);
@@ -38,23 +47,44 @@ export default function App() {
     getStoredIP();
   }, []);
 
-  const automateScanCode = (data) => {
-    socket.emit("scan", { data: data });
-  };
-
   useEffect(() => {
-    if (socket) {
-      socket.on("connect", () => {
-        console.log("conectado");
-        alert("conectado");
-      });
+    const interval = setInterval(() => {
+      if (socketUri !== null) {
+        console.log("socket uri " + socketUri);
+        // Envuelve la llamada a axios.get dentro de un bloque try-catch
 
-      socket.on("disconnect", () => {
-        console.log("desconectado");
-        alert("desconectado");
+        axios
+          .get(`${socketUri}/status`)
+          .then((response) => {
+            console.log("Respuesta del servidor:", response.status);
+            if (response.status === 200) {
+              setConnectionStatus(true);
+              setConnectionData(response.data);
+              console.log(response.data);
+            }
+          })
+          .catch((error) => {
+            console.log("Error en la solicitud al servidor:", error);
+            setConnectionStatus(false);
+            setConnectionData(null);
+          });
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [socketUri]);
+
+  const automateScanCode = (data) => {
+    axios
+      .post(`${socketUri}/scan`, { data })
+      .then((response) => {
+        console.log("Respuesta del servidor:", response.status);
+        // alert("Respuesta del servidor:" + response.status);
+      })
+      .catch((error) => {
+        console.log("Error en la solicitud al servidor:", error);
+        alert("No hay conexion con el computador");
       });
-    }
-  }, [socket]);
+  };
 
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
@@ -66,23 +96,26 @@ export default function App() {
       console.log("ip escaneada: " + data);
       AsyncStorage.setItem("scannedIP", data)
         .then(() => {
-          setSocket(io(`http://${data}:3002`));
+          setSocketUri(`http://${data}:` + port);
           setIpScaning(false);
         })
         .catch((error) => console.log("Error while storing IP:", error));
     } else {
-      if (socket) {
+      if (socketUri) {
         console.log("codigo escaneado: " + data);
         automateScanCode(data);
       } else {
-        console.log("socket no definido");
+        console.log("socketUri no definido");
       }
     }
   };
 
   const onIpScan = () => {
     setIpScaning(true);
-    setSocket(null);
+    setSocketUri(null);
+    setScanned(false);
+    setConnectionStatus(null);
+    setConnectionData(null);
   };
 
   if (hasPermission === null) {
@@ -93,8 +126,8 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      {socket === null ? (
+    <SafeAreaView style={styles.container}>
+      {socketUri === null ? (
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Escanea el QR de la PC</Text>
           <Text style={styles.subTitle}>
@@ -104,7 +137,20 @@ export default function App() {
       ) : (
         <View style={styles.titleContainer}>
           <Text style={styles.title}>Escanea el codigo de barras</Text>
-          <Text style={styles.subTitle}> {socket.io.uri}</Text>
+          {connectionStatus === null ? (
+            <Badge value={"Cargando..."} status={"primary"} />
+          ) : connectionStatus ? (
+            <Badge value={"Conectado"} status={"success"} />
+          ) : (
+            <Badge value={"Desconectado"} status={"error"} />
+          )}
+          {connectionData ? (
+            <Text style={styles.subTitle}>
+              Computador: {connectionData.hostname}
+            </Text>
+          ) : (
+            <Text style={styles.subTitle}>No hay conexion</Text>
+          )}
         </View>
       )}
       <View style={styles.camera}>
@@ -113,29 +159,54 @@ export default function App() {
           style={StyleSheet.absoluteFillObject}
           type={"back"}
         />
+
         {scanned && (
-          <TouchableOpacity
-            style={styles.scanAgain}
-            onPress={() => setScanned(false)}
-          >
-            <Text>Escanear de nuevo</Text>
-          </TouchableOpacity>
+          <>
+            <View style={styles.focused}></View>
+            <TouchableOpacity
+              style={styles.scanAgain}
+              onPress={() => setScanned(false)}
+            >
+              <Text>Escanear de nuevo</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
       <View style={styles.buttons}>
-        <Button title={"Escanear PC"} onPress={() => onIpScan()} />
-        <Button title={"socket"} onPress={() => console.log(socket)} />
+        {socketUri === null ? (
+          <TouchableOpacity
+            onPress={() => onIpScan()}
+            style={[{ backgroundColor: "#0070fa" }, styles.scan_or_clear]}
+          >
+            <Text style={styles.scan_or_clear_text}>Escanea un computador</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => {
+              onIpScan();
+            }}
+            style={[
+              { backgroundColor: "rgb(255, 81, 71)" },
+              styles.scan_or_clear,
+            ]}
+          >
+            <Text style={styles.scan_or_clear_text}>
+              Escanea otro computador
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#20272F",
     alignItems: "center",
     justifyContent: "center",
+    color: "white",
   },
   camera: {
     width: "100%",
@@ -144,6 +215,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  focused: {
+    position: "absolute",
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    borderWidth: 2,
+    // borderColor: "white",
+    backgroundColor: "#000000b0",
+  },
+
   titleContainer: {
     width: "100%",
     justifyContent: "center",
@@ -152,11 +233,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginTop: 20,
+    color: "white",
   },
   subTitle: {
     fontSize: 15,
     marginBottom: 20,
+    color: "white",
   },
   buttons: {
     flexDirection: "row",
@@ -168,5 +251,16 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     padding: 20,
     borderRadius: 10,
+    bottom: 110,
+  },
+  scan_or_clear: {
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  scan_or_clear_text: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 15,
   },
 });
