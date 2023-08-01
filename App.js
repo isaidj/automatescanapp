@@ -13,6 +13,7 @@ import { Camera } from "expo-camera";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { Badge } from "./components/Badge";
+import { Audio } from "expo-av";
 
 const port = 5000;
 export default function App() {
@@ -22,7 +23,7 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [connectionData, setConnectionData] = useState(null);
   const [ipScaning, setIpScaning] = useState(false);
-
+  const [sound, setSound] = React.useState();
   useEffect(() => {
     const getBarCodeScannerPermissions = async () => {
       const { status } = await BarCodeScanner.requestPermissionsAsync();
@@ -73,6 +74,25 @@ export default function App() {
     return () => clearInterval(interval);
   }, [socketUri]);
 
+  async function playSound() {
+    console.log("Loading Sound");
+    const { sound } = await Audio.Sound.createAsync(
+      require("./assets/store-scanner.mp3")
+    );
+    setSound(sound);
+
+    console.log("Playing Sound");
+    await sound.playAsync();
+  }
+  useEffect(() => {
+    return sound
+      ? () => {
+          console.log("Unloading Sound");
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
+
   const automateScanCode = (data) => {
     axios
       .post(`${socketUri}/scan`, { data })
@@ -88,7 +108,7 @@ export default function App() {
 
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
-    // playSound();
+    playSound();
     const duration = 150;
     Vibration.vibrate(duration);
 
