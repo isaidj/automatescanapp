@@ -14,9 +14,51 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { Badge } from "./components/Badge";
 import { Audio } from "expo-av";
+import AppIntroSlider from "react-native-app-intro-slider";
+
+const OnboardingScreen = ({ onFinish }) => {
+  const slides = [
+    {
+      key: "1",
+      title: "Bienvenido a Gscanner",
+      text: "Escanea códigos de barras y QR con facilidad y envia los datos a tu pc",
+      backgroundColor: "#59b2ab",
+    },
+    {
+      key: "2",
+      title: "Descarga Gscanner en la pc",
+      text: "Descarga la app de Gscanner en la pc escanea el codigo qr para conectar movil con pc",
+      backgroundColor: "#febe29",
+    },
+    {
+      key: "3",
+      title: "Resultados del escaneo",
+      text: "Visualiza la información del código escaneado en la siguiente pantalla.",
+      backgroundColor: "#22bcb5",
+    },
+  ];
+
+  const renderItem = ({ item }) => (
+    <View style={[styles.slide, { backgroundColor: item.backgroundColor }]}>
+      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.text}>{item.text}</Text>
+    </View>
+  );
+
+  return (
+    <AppIntroSlider
+      renderItem={renderItem}
+      data={slides}
+      onDone={onFinish}
+      showSkipButton
+      onSkip={onFinish}
+    />
+  );
+};
 
 const port = 5000;
 export default function App() {
+  const [showOnboarding, setShowOnboarding] = useState(null);
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
   const [socketUri, setSocketUri] = useState(null);
@@ -25,13 +67,26 @@ export default function App() {
   const [ipScaning, setIpScaning] = useState(false);
   const [sound, setSound] = React.useState();
   useEffect(() => {
-    const getBarCodeScannerPermissions = async () => {
+    (async () => {
       const { status } = await BarCodeScanner.requestPermissionsAsync();
       setHasPermission(status === "granted");
-    };
 
-    getBarCodeScannerPermissions();
+      // Check if the user has completed onboarding from AsyncStorage
+      const onboardingStatus = await AsyncStorage.getItem(
+        "hasCompletedOnboarding"
+      );
+      setShowOnboarding(onboardingStatus !== "true" ? true : false); // If onboardingStatus is null or 'false', it means the user is new and onboarding should be shown.
+    })();
   }, []);
+
+  const handleFinishOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem("hasCompletedOnboarding", "true");
+      setShowOnboarding(false);
+    } catch (error) {
+      console.log("Error saving onboarding completion status:", error);
+    }
+  };
 
   useEffect(() => {
     const getStoredIP = async () => {
@@ -143,6 +198,9 @@ export default function App() {
   }
   if (hasPermission === false) {
     return <Text>No access to camera</Text>;
+  }
+  if (showOnboarding) {
+    return <OnboardingScreen onFinish={handleFinishOnboarding} />;
   }
 
   return (
@@ -282,5 +340,25 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 15,
+  },
+
+  slide: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "blue",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "white",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  text: {
+    fontSize: 18,
+    color: "white",
+    textAlign: "center",
+    paddingHorizontal: 30,
   },
 });
