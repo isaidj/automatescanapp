@@ -78,13 +78,8 @@ export default function App() {
     const getBarCodeScannerPermissions = async () => {
       const { status } = await BarCodeScanner.requestPermissionsAsync();
       setHasPermission(status === "granted");
-
-      // Check if the user has completed onboarding from AsyncStorage
-      const onboardingStatus = await AsyncStorage.getItem(
-        "hasCompletedOnboarding"
-      );
-      setShowOnboarding(onboardingStatus !== "true" ? true : false); // If onboardingStatus is null or 'false', it means the user is new and onboarding should be shown.
-    })();
+    };
+    getBarCodeScannerPermissions();
   }, []);
 
   const handleFinishOnboarding = async () => {
@@ -118,8 +113,20 @@ export default function App() {
         console.log("Error while retrieving stored IP:", error);
       }
     };
+    const getStoredShowOnboarding = async () => {
+      try {
+        const storedProfile = await AsyncStorage.getItem("showOnboarding");
+        if (storedProfile) {
+          setProfileScan(storedProfile);
+        }
+      } catch (error) {
+        console.log("Error while retrieving stored IP:", error);
+      }
+    };
+
     getStoredProfile();
     getStoredIP();
+    getStoredShowOnboarding();
   }, []);
 
   useEffect(() => {
