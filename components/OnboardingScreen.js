@@ -5,20 +5,26 @@ export const OnboardingScreen = ({ onFinish }) => {
     {
       key: "1",
       title: "Bienvenido a Gscanner",
-      text: "Escanea códigos de barras y QR con facilidad y envia los datos a tu pc",
-      backgroundColor: "#59b2ab",
+      text: "Escanea códigos de barras y QR con facilidad y envía los datos a tu PC.",
+      backgroundColor: "#20272F",
     },
     {
       key: "2",
-      title: "Descarga Gscanner en la pc",
-      text: "Descarga la app de Gscanner en la pc escanea el codigo qr para conectar movil con pc",
-      backgroundColor: "#febe29",
+      title: "Descarga Gscanner pc",
+      text: "Descarga la app Gscanner en tu PC y acepta los permisos de firewall.",
+      backgroundColor: "#579AE6",
     },
     {
       key: "3",
+      title: "Escanea para la conexión",
+      text: "Escanea el código QR de la app de PC y espera el estado de conectado  ",
+      backgroundColor: "#99BAE0",
+    },
+    {
+      key: "4",
       title: "Resultados del escaneo",
-      text: "Visualiza la información del código escaneado en la siguiente pantalla.",
-      backgroundColor: "#22bcb5",
+      text: "Visualiza la información del código escaneado en cualquier campo de texto en tu PC",
+      backgroundColor: "#254161",
     },
   ];
 
@@ -36,6 +42,13 @@ export const OnboardingScreen = ({ onFinish }) => {
       onDone={onFinish}
       showSkipButton
       onSkip={onFinish}
+      renderNextButton={() => (
+        <Text style={styles.buttonSlider}>Siguiente</Text>
+      )}
+      renderSkipButton={() => <Text style={styles.buttonSlider}>Omitir</Text>}
+      renderDoneButton={() => (
+        <Text style={styles.buttonSliderDone}>Listo</Text>
+      )}
     />
   );
 };
@@ -59,5 +72,16 @@ const styles = StyleSheet.create({
     color: "white",
     textAlign: "center",
     paddingHorizontal: 30,
+  },
+  buttonSlider: {
+    color: "white",
+    fontSize: 18,
+    marginTop: 11,
+  },
+  buttonSliderDone: {
+    color: "white",
+    fontSize: 18,
+    marginTop: 11,
+    marginRight: 11,
   },
 });
