@@ -31,7 +31,7 @@ export default function App() {
   const [sound, setSound] = React.useState();
   const [count_scans, setCount_scans] = useState(0);
   const [cursor_status, setCursor_status] = useState(false);
-  const [profileScan, setProfileScan] = useState("general");
+  const [profileScan, setProfileScan] = useState(profiles[0]);
 
   useEffect(() => {
     //--------------------Permiso para usar la camara-----------------------------------
@@ -177,7 +177,7 @@ export default function App() {
   };
   const profileScanHandler = (data) => {
     console.log("perfil de escaneo: " + profileScan);
-    if (profileScan === "general") {
+    if (profileScan === profiles[0]) {
       console.log("codigo escaneado: " + data);
       automateScanCode(data);
       setCount_scans(count_scans + 1);
@@ -327,7 +327,7 @@ export default function App() {
         >
           <Button
             title="Modo General"
-            onPress={() => setProfileScan("general")}
+            onPress={() => setProfileScan(profiles[0])}
           />
           <Button
             title="nuevo usuario"
@@ -345,7 +345,7 @@ export default function App() {
           />
           <Button
             title="Modo Fomplus"
-            onPress={() => setProfileScan("fomplus")}
+            onPress={() => setProfileScan(profiles[1])}
           />
         </View>
       </View>
