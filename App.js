@@ -16,6 +16,8 @@ import axios from "axios";
 import { Badge } from "./components/Badge";
 import { Audio } from "expo-av";
 import { OnboardingScreen } from "./components/OnboardingScreen";
+import { ExclamationIcon, PcIcon } from "./assets/Icons";
+import webBrowserNavigation from "./utils/webBrowserNavigation";
 
 const port = 5000;
 const profiles = ["general", "fomplus"];
@@ -280,6 +282,7 @@ export default function App() {
           />
         </View>
       )}
+
       <View style={styles.camera}>
         <Camera
           onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
@@ -315,7 +318,20 @@ export default function App() {
         >
           <Text style={styles.count_scans_text}>N°: {count_scans}</Text>
         </TouchableOpacity>
-        <View
+
+        {socketUri === null && (
+          <TouchableOpacity
+            style={styles.buttonDownload}
+            onPress={() =>
+              webBrowserNavigation("https://g-scanner.vercel.app/")
+            }
+          >
+            <PcIcon width={40} height={40} />
+            <Text style={styles.textDownload}>Descargar</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* <View
           style={{
             width: "100%",
             position: "absolute",
@@ -347,7 +363,7 @@ export default function App() {
             title="Modo Fomplus"
             onPress={() => setProfileScan(profiles[1])}
           />
-        </View>
+        </View> */}
       </View>
 
       <View style={styles.buttons}>
@@ -359,19 +375,21 @@ export default function App() {
             <Text style={styles.scan_or_clear_text}>Escanea un computador</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity
-            onPress={() => {
-              onIpScan();
-            }}
-            style={[
-              { backgroundColor: "rgb(255, 81, 71)" },
-              styles.scan_or_clear,
-            ]}
-          >
-            <Text style={styles.scan_or_clear_text}>
-              Escanea otro computador
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.buttons_escanearOtroComputador}>
+            <TouchableOpacity
+              onPress={() => {
+                onIpScan();
+              }}
+              style={[
+                { backgroundColor: "rgb(255, 81, 71)" },
+                styles.scan_or_clear,
+              ]}
+            >
+              <Text style={styles.scan_or_clear_text}>
+                Escanea otro computador
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </SafeAreaView>
@@ -454,6 +472,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
+  scan_or_clear: {
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
   scanAgain: {
     position: "absolute",
     backgroundColor: "white",
@@ -461,14 +484,29 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     bottom: 110,
   },
-  scan_or_clear: {
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 10,
+  buttons_escanearOtroComputador: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
   },
   scan_or_clear_text: {
     color: "white",
     fontWeight: "bold",
     fontSize: 15,
+  },
+  buttonDownload: {
+    position: "absolute",
+    right: 10,
+    bottom: 10,
+    backgroundColor: "white",
+    padding: 10,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  textDownload: {
+    color: "black",
+    fontWeight: "bold",
+    fontSize: 12,
   },
 });

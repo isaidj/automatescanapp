@@ -1,5 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import AppIntroSlider from "react-native-app-intro-slider";
+import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
+
 export const OnboardingScreen = ({ onFinish }) => {
   const slides = [
     {
@@ -11,7 +14,7 @@ export const OnboardingScreen = ({ onFinish }) => {
     {
       key: "2",
       title: "Descarga Gscanner pc",
-      text: "Descarga la app Gscanner en tu PC y acepta los permisos de firewall.",
+      text: "Es necesario descargar la app de PC para poder enviar los datos escaneados",
       backgroundColor: "#579AE6",
     },
     {
@@ -27,11 +30,26 @@ export const OnboardingScreen = ({ onFinish }) => {
       backgroundColor: "#254161",
     },
   ];
+  const [result, setResult] = useState(null);
 
+  const _handlePressButtonAsync = async () => {
+    let result = await WebBrowser.openBrowserAsync(
+      "https://g-scanner.vercel.app/"
+    );
+    setResult(result);
+  };
   const renderItem = ({ item }) => (
     <View style={[styles.slide, { backgroundColor: item.backgroundColor }]}>
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.text}>{item.text}</Text>
+      {item.key === "2" && (
+        <TouchableOpacity
+          onPress={_handlePressButtonAsync}
+          style={styles.buttonDownload}
+        >
+          <Text style={styles.textDownload}>Ir a Descargar</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -83,5 +101,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 11,
     marginRight: 11,
+  },
+  buttonDownload: {
+    backgroundColor: "#254161",
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  textDownload: {
+    color: "white",
+    fontSize: 18,
   },
 });
